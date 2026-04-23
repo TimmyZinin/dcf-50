@@ -59,6 +59,7 @@
   .buy { color: var(--green); font-weight: 600; }
   .sell { color: var(--red); font-weight: 600; }
   .hold { color: var(--muted); }
+  .suspect { color: var(--amber); }
   .na { color: #475261; font-style: italic; }
   footer {
     padding: 24px; color: var(--muted); font-size: 12px; text-align: center;
@@ -98,6 +99,8 @@
     <option value="">All signals</option>
     <option value="buy">BUY (upside ≥ +30%)</option>
     <option value="sell">SELL (upside ≤ −20%)</option>
+    <option value="hold">HOLD</option>
+    <option value="suspect">SUSPECT (data quality)</option>
     <option value="ok">Computed only</option>
   </select>
 </div>

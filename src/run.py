@@ -26,6 +26,9 @@ TEMPLATES = Path(__file__).parent / "templates"
 def _signal(upside):
     if upside is None:
         return "na"
+    # Guard against bad data (yfinance ADR quirks) — treat extreme as suspect
+    if upside > 500 or upside < -100:
+        return "suspect"
     if upside >= 30:
         return "buy"
     if upside <= -20:
@@ -87,6 +90,9 @@ def run():
 
         computed += 1
         sig = _signal(r.upside_pct)
+        note = r.note or ""
+        if sig == "suspect":
+            note = (note + " " if note else "") + "extreme upside — data quality"
         if sig == "buy":
             buy += 1
         elif sig == "sell":
@@ -98,13 +104,14 @@ def run():
             "fair_high": r.fair_high, "upside_pct": r.upside_pct,
             "wacc_pct": (r.wacc or 0) * 100 if r.wacc else None,
             "pe": r.pe, "ev_ebitda": r.ev_ebitda, "ps": r.ps, "peg": r.peg,
-            "status": "OK", "note": "", "signal": sig,
+            "status": "OK" if sig != "suspect" else "SUSPECT",
+            "note": note, "signal": sig,
         })
 
-    # sort: buy signals first by upside desc, then ok, then sell, then na
+    # sort: buy signals first by upside desc, then hold, then sell, then suspect, then na
     def _sort_key(r):
-        order = {"buy": 0, "hold": 1, "sell": 2, "na": 3}
-        return (order.get(r["signal"], 4), -(r["upside_pct"] or -9999))
+        order = {"buy": 0, "hold": 1, "sell": 2, "suspect": 3, "na": 4}
+        return (order.get(r["signal"], 5), -(r["upside_pct"] or -9999))
     rows.sort(key=_sort_key)
 
     env = Environment(
