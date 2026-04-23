@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DCF-50 — Fair Value Radar</title>
+<style>
+  :root {
+    --bg: #0b0d10;
+    --panel: #12161b;
+    --border: #1f262e;
+    --text: #e7ebf0;
+    --muted: #8a95a1;
+    --accent: #ffb347;
+    --green: #34d399;
+    --red: #f87171;
+    --amber: #fbbf24;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.5;
+  }
+  header {
+    padding: 32px 24px 16px; border-bottom: 1px solid var(--border);
+  }
+  h1 { margin: 0 0 4px; font-size: 24px; font-weight: 600; letter-spacing: -0.01em; }
+  .sub { color: var(--muted); font-size: 14px; }
+  .meta { display: flex; gap: 24px; flex-wrap: wrap; margin-top: 12px; font-size: 13px; }
+  .meta span { color: var(--muted); }
+  .meta b { color: var(--text); font-weight: 500; }
+  .controls { padding: 16px 24px; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+  .controls input, .controls select {
+    background: var(--panel); color: var(--text); border: 1px solid var(--border);
+    padding: 8px 12px; border-radius: 6px; font-size: 13px; outline: none;
+  }
+  .controls input:focus, .controls select:focus { border-color: var(--accent); }
+  .table-wrap { padding: 0 24px 48px; overflow-x: auto; }
+  table {
+    width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums;
+  }
+  thead th {
+    background: var(--panel); color: var(--muted); font-weight: 500;
+    text-align: right; padding: 10px 12px; border-bottom: 1px solid var(--border);
+    cursor: pointer; user-select: none; white-space: nowrap; position: sticky; top: 0;
+  }
+  thead th:first-child, thead th:nth-child(2) { text-align: left; }
+  thead th:hover { color: var(--text); }
+  tbody td {
+    padding: 10px 12px; border-bottom: 1px solid var(--border); text-align: right;
+  }
+  tbody td:first-child, tbody td:nth-child(2) { text-align: left; }
+  tbody tr:hover { background: rgba(255,255,255,0.02); }
+  .tic { font-weight: 600; letter-spacing: 0.01em; }
+  .muted { color: var(--muted); }
+  .region-us { color: var(--accent); font-size: 11px; }
+  .region-cn { color: #a78bfa; font-size: 11px; }
+  .buy { color: var(--green); font-weight: 600; }
+  .sell { color: var(--red); font-weight: 600; }
+  .hold { color: var(--muted); }
+  .na { color: #475261; font-style: italic; }
+  footer {
+    padding: 24px; color: var(--muted); font-size: 12px; text-align: center;
+    border-top: 1px solid var(--border);
+  }
+  footer a { color: var(--accent); text-decoration: none; }
+  .disclaimer { max-width: 720px; margin: 0 auto; }
+  @media (max-width: 640px) {
+    header { padding: 20px 16px 12px; }
+    .controls, .table-wrap { padding-left: 16px; padding-right: 16px; }
+    thead th, tbody td { padding: 8px 8px; font-size: 12px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>DCF-50 — Fair Value Radar</h1>
+  <div class="sub">Automated two-stage DCF for Top-50 US + Top-50 China ADR</div>
+  <div class="meta">
+    <span>Updated <b>{{ updated_at }}</b></span>
+    <span>Universe <b>{{ total }}</b></span>
+    <span>Computed <b>{{ computed }}</b></span>
+    <span>Skipped <b>{{ skipped }}</b></span>
+    <span>Buy signals (≥+30%) <b class="buy">{{ buy_count }}</b></span>
+    <span>Sell signals (≤−20%) <b class="sell">{{ sell_count }}</b></span>
+  </div>
+</header>
+
+<div class="controls">
+  <input type="search" id="filter" placeholder="Filter ticker or name…">
+  <select id="region">
+    <option value="">All regions</option>
+    <option value="US">US</option>
+    <option value="CN-ADR">China ADR</option>
+  </select>
+  <select id="signal">
+    <option value="">All signals</option>
+    <option value="buy">BUY (upside ≥ +30%)</option>
+    <option value="sell">SELL (upside ≤ −20%)</option>
+    <option value="ok">Computed only</option>
+  </select>
+</div>
+
+<div class="table-wrap">
+<table id="radar">
+  <thead>
+    <tr>
+      <th data-sort="string">Ticker</th>
+      <th data-sort="string">Name</th>
+      <th data-sort="string">Sector</th>
+      <th data-sort="string">Region</th>
+      <th data-sort="number">Price</th>
+      <th data-sort="number">Fair Low</th>
+      <th data-sort="number">Fair Base</th>
+      <th data-sort="number">Fair High</th>
+      <th data-sort="number">Upside %</th>
+      <th data-sort="number">P/E</th>
+      <th data-sort="number">EV/EBITDA</th>
+      <th data-sort="number">P/S</th>
+      <th data-sort="number">PEG</th>
+      <th data-sort="number">WACC</th>
+      <th data-sort="string">Status</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for r in rows %}
+    <tr data-region="{{ r.region }}" data-signal="{{ r.signal }}">
+      <td class="tic">{{ r.ticker }}</td>
+      <td>{{ r.name }}</td>
+      <td class="muted">{{ r.sector }}</td>
+      <td class="region-{{ 'us' if r.region == 'US' else 'cn' }}">{{ r.region }}</td>
+      <td>{{ fmt(r.price, '$') }}</td>
+      <td>{{ fmt(r.fair_low, '$') }}</td>
+      <td>{{ fmt(r.fair_base, '$') }}</td>
+      <td>{{ fmt(r.fair_high, '$') }}</td>
+      <td class="{{ r.signal }}">{{ fmt_pct(r.upside_pct) }}</td>
+      <td>{{ fmt(r.pe) }}</td>
+      <td>{{ fmt(r.ev_ebitda) }}</td>
+      <td>{{ fmt(r.ps) }}</td>
+      <td>{{ fmt(r.peg) }}</td>
+      <td>{{ fmt_pct(r.wacc_pct) }}</td>
+      <td class="muted">{{ r.status }}{% if r.note %} · {{ r.note }}{% endif %}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+
+<footer>
+  <div class="disclaimer">
+    Informational only — not investment advice. Two-stage DCF, 5Y projection + terminal g=2.5%,
+    WACC via CAPM (β · ERP 5.5% + after-tax cost of debt). Data: yfinance. Negative/missing FCF → skipped.
+    <br><a href="https://github.com/TimmyZinin/dcf-50">github.com/TimmyZinin/dcf-50</a>
+  </div>
+</footer>
+
+<script>
+(function(){
+  const tbody = document.querySelector('#radar tbody');
+  const rows = Array.from(tbody.querySelectorAll('tr'));
+  const filter = document.getElementById('filter');
+  const region = document.getElementById('region');
+  const signal = document.getElementById('signal');
+
+  function apply() {
+    const q = filter.value.toLowerCase();
+    const rg = region.value;
+    const sg = signal.value;
+    rows.forEach(r => {
+      const txt = r.textContent.toLowerCase();
+      const matchQ = !q || txt.includes(q);
+      const matchR = !rg || r.dataset.region === rg;
+      let matchS = true;
+      if (sg === 'ok') matchS = r.dataset.signal !== 'na';
+      else if (sg) matchS = r.dataset.signal === sg;
+      r.style.display = (matchQ && matchR && matchS) ? '' : 'none';
+    });
+  }
+  [filter, region, signal].forEach(el => el.addEventListener('input', apply));
+
+  // sorting
+  document.querySelectorAll('th[data-sort]').forEach((th, idx) => {
+    let asc = false;
+    th.addEventListener('click', () => {
+      asc = !asc;
+      const type = th.dataset.sort;
+      const sorted = rows.slice().sort((a, b) => {
+        const av = a.children[idx].textContent.trim();
+        const bv = b.children[idx].textContent.trim();
+        if (type === 'number') {
+          const an = parseFloat(av.replace(/[^0-9.\-]/g, '')) || -Infinity;
+          const bn = parseFloat(bv.replace(/[^0-9.\-]/g, '')) || -Infinity;
+          return asc ? an - bn : bn - an;
+        }
+        return asc ? av.localeCompare(bv) : bv.localeCompare(av);
+      });
+      sorted.forEach(r => tbody.appendChild(r));
+    });
+  });
+})();
+</script>
+</body>
+</html>
