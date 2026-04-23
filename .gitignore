@@ -5,3 +5,6 @@ venv/
 .env
 .DS_Store
 *.log
+data/
+assets/
+.wiki/
